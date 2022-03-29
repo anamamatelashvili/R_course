@@ -1,0 +1,129 @@
+---
+title: "L4 -- ვიზუალიზაცია ggplot2-ით"
+output: html_document
+date: '2022-03-27'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## base R ვიზუალიზაცია
+
+```{r}
+library(magrittr)
+library(dplyr)
+plot(iris$Sepal.Length, iris$Sepal.Width, type="p", col=iris$Species)
+#lapply(iris$Species, function(x){abline(lm(Sepal.Width~Sepal.Length, iris, subset = (Species == x)), col=x)})
+```
+
+## ggplot2 
+
+[ვიზუალიზაციის შეჯამება](https://statsandr.com/blog/files/ggplot2-cheatsheet.pdf)
+
+ggplot2 ვიზუალიზაციას უდგება სტრუქტურულად და იყენებს გრაფიკის გრამატიკას. ამ გრამატიკის ძირითადი შემადგენელი ნაწილებია: 
+
+* მონდაცემთა ცხრილი
+* ესთეტიკა aes(...) -- x, y კოორდინატები, ფერი, ზომა, გამჭვირვალობა, წირის ტიპი და სიგანე და ა.შ.
+* გეომეტრია geom_... -- წერტილი, წირი, ჰისტოგრამა
+* წახნაგები facet_... -- სვეტების ან სტრიქონების მიხედვით
+* სტატისტიკა stat_... -- სტატისტიკური ელემენტები წარმოდგენილი გრაფიკზე
+* კოორდინატები coord_... -- კოორდინატთა სისტემა, კარტეზიული, პოლარული, საზღვრები
+* თემატური შტრიხები theme_... -- სხვა შტრიხები რაც მონაცემებს არ ეხება
+
+## ggplot2 გრაფიკის ძირითადი აღნაგობა
+
+```{r}
+library(ggplot2)
+#ggplot(data = <DATA>) + 
+#  <GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+```
+
+
+### ესთეტიკა
+
+```{r}
+ggplot(data = iris) + 
+  geom_point(mapping = aes(x=Sepal.Length, y=Sepal.Width, shape=Species, size=Petal.Length, alpha=Petal.Width))
+```
+
+### გეომეტრია
+
+```{r}
+ggplot(data = iris) + 
+  geom_boxplot(mapping = aes(x=Species, y=Sepal.Width))
+
+
+ggplot(data = iris) + 
+  geom_bar(mapping = aes(x=Sepal.Width, color=Species))
+
+
+ggplot(data = iris %>% filter(Species == "setosa")) + 
+  geom_point(mapping = aes(x=Sepal.Length, y=Sepal.Width)) + 
+  geom_smooth(mapping = aes(x=Sepal.Length, y=Sepal.Width), se=F) 
+
+
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  geom_smooth(se=F) + 
+  geom_smooth(aes(group=1), method="lm", se=F, linetype=2)
+```
+
+### წახნაგები
+
+```{r}
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  facet_grid(Species~.)
+```
+
+### სტატისტიკა
+
+```{r}
+ggplot(data = iris, aes(x=Sepal.Length, col=Species)) + 
+  geom_density() 
+
+
+ggplot(data = iris, aes(x=Sepal.Length, fill=Species), kernel="rectangular") + 
+  stat_density() 
+```
+
+### კოორდინატები
+
+```{r}
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  facet_grid(Species~.) + 
+  coord_fixed(ratio=1)
+
+
+ggplot(data = iris, aes(x=Species, y=Sepal.Width)) + 
+  geom_violin(scale="area") + 
+  coord_flip()
+
+
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  facet_grid(Species~.) + 
+  coord_polar()
+```
+
+### თემები
+
+```{r}
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  facet_grid(Species~.) + 
+  theme_bw() + 
+  theme(legend.position="bottom")
+```
+
+
+```{r}
+ggplot(data = iris, aes(x=Sepal.Length, y=Sepal.Width, col=Species)) + 
+  geom_point() + 
+  facet_grid(Species~.) + 
+  theme_bw() + 
+  theme(legend.position="bottom") + 
+   labs(title ="Irises", x = "Sepal length", y = "Sepal width")
+```
