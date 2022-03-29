@@ -1,5 +1,5 @@
 ---
-title: "Rის და RStudioს სიკეთეები"
+title: "L1 -- Rის და RStudioს სიკეთეები"
 output: html_document
 date: '2022-03-23'
 ---
