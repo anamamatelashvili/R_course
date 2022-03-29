@@ -1,0 +1,170 @@
+---
+title: "L3 -- მონაცემთა დამუშავება"
+output: html_document
+date: '2022-03-27'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+ [დამუშავების შეჯამება](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+
+## მონაცემთა დამუშავება
+
+* შემაჯამებელი სტატისტიკა
+* არასრული მონაცემები
+* apply ფუნქციები
+* dplyr ფუნქციები მონაცემთა ცხრილის მანიპულაციებისთვის
+
+### შემაჯამებელი სტატისტიკა
+
+```{r}
+library(magrittr)
+dim(iris)
+names(data)
+class(iris)
+iris %>% head()
+
+summary(iris)
+var(iris$Sepal.Length)
+sd(iris$Sepal.Length)
+cov(iris$Sepal.Length, iris$Sepal.Width)
+cor(iris$Sepal.Length, iris$Sepal.Width)
+
+# quick plot
+plot(iris)
+
+# factor
+levels(iris$Species)
+```
+
+შეგახსენებთ განმარტებებს:
+
+$$mean = \frac{1}{n} \Sigma_{1}^{n} (x_i)$$
+$$var = \frac{1}{n} \Sigma_{1}^{n} (x_i - mean)^2 $$
+
+$$sd = \sqrt{var}$$
+
+$$cov(x, y) = \frac{1}{n} \Sigma_{1}^{n} (x_i - mean_x)(y_i - mean_y)$$
+
+$$cor = \frac{cov(x, y)}{sd_x \space sd_y}$$
+
+
+### გადავხედოთ მონაცემებს 
+
+```{r}
+library(dplyr)
+glimpse(iris)
+iris %>% tail()
+
+#View(iris)
+
+iris_tbl <- as_tibble(iris)
+print(iris_tbl)
+iris_tbl %>% class()
+```
+
+### არასრული მონდაცემები
+
+მოვაშოროთ ზამბახების ცხრილს რამდენიმე მნიშვნელობა:
+
+```{r}
+
+data <- iris
+rand_vec_for_NaN <- sample(1:150, 10, replace=F)
+any(is.na(data))
+names(data)
+data$Sepal.Length[rand_vec_for_NaN] <- NaN
+rand_vec_for_NA <- sample(1:150, 10, replace=F)
+data$Sepal.Length[rand_vec_for_NA] <- NA
+any(is.na(data$Sepal.Length))
+mean(is.na(data$Sepal.Length))
+
+library(readr)
+data_loc  <- "/Users/anamamatelashvili/Documents/R_course/R_course/data/iris_missing_values.csv"
+data %>% write_csv(data_loc)
+```
+
+ჩავტვირთოთ სახეშეცვლილი ზამბახების ბაზა: 
+```{r}
+iris_with_missing_values <- read_csv(data_loc)
+spec(iris_with_missing_values)
+class(iris_with_missing_values)
+
+iris_with_missing_values %>% head()
+iris_with_missing_values %>% summary()
+```
+
+
+შევცვალოთ ზამბახების ჯიშის სვეტის ტიპი:
+```{r}
+iris_with_missing_values$Species <- as.factor(iris_with_missing_values$Species)  
+summary(iris_with_missing_values)
+cor(iris_with_missing_values$Sepal.Length, iris_with_missing_values$Sepal.Width, use="complete.obs")
+```
+
+
+### არასრული მონაცემების სახეები: 
+
+NA (Not Available) 
+NaN (Not a Number) 
+NaN არის NA-ს ვარიანტი მაგრამ არა პირიქით. 
+Inf უსასრულო მნიშვნელობა, მიიღება 1/0 სახის ოპერაციისგან.
+NA, NaN და Inf მნიშვნელობებია, აქვს სიგრძე 1.
+NULL აღნიშნავს ელემენტის არარსებობას, აქვს სიგრძე 0. 
+
+```{r}
+c(1, 2, 3) / c(2, 0, 4)
+
+c(1, 0, 3) / c(2, 0, 4)
+
+c(1, NA, 3) / c(2, 0, 4)
+
+c(1, NULL, 3) / c(2, 0, 4)
+length(c(1, NULL, 3))
+```
+
+
+#### არასრული მონაცემების შევსება:
+```{r}
+iris_with_missing_values %>%
+  mutate(Sepal.Length = replace(Sepal.Length,
+                                  is.na(Sepal.Length),
+                                  median(Sepal.Length, na.rm = TRUE)))
+
+
+iris_with_missing_values %>% replace(is.na(.), 0) %>% summary()
+```
+
+
+## apply ფუნქციები
+
+```{r}
+apply(iris_with_missing_values, 1, function(row){any(is.na(row))})
+
+lapply(iris_with_missing_values, function(x){mean(x, na.rm=T)})
+
+sapply(iris_with_missing_values, function(x){mean(x, na.rm=T)})
+class(sapply(iris_with_missing_values, function(x){mean(x, na.rm=T)}))
+
+vapply(iris_with_missing_values, function(x){mean(x, na.rm=T)}, FUN.VALUE=numeric(1))
+
+mapply(function(x, y){x^2+y}, x=1:4, y=4:1 )
+```
+
+ 
+## dplyr 5 functions
+
+```{r}
+iris_with_missing_values %>% 
+  filter(Sepal.Length > 6) %>% 
+  arrange(desc(Sepal.Length)) %>% 
+  select(Sepal.Length, Sepal.Width) %>% 
+  mutate(new_col = Sepal.Length + Sepal.Width) %>%
+  summarize(mean = mean(Sepal.Length), new_col_mean = mean(new_col), n=n_distinct(Sepal.Length))
+```
+
+
+
+
+
