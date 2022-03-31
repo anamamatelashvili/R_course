@@ -1,0 +1,135 @@
+---
+title: "L5 -- მონაცემების მოძიება"
+output: html_document
+date: '2022-03-31'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* ღია მონაცემები
+    * [data.world](https://data.world/search?q=type%3Adataset&type=resources)
+    * [data.gov.ge](https://www.data.gov.ge/Datasets)
+    * [საქსტატი](http://www.geostat.ge)
+* მონაცემთა ჩატვირთვა
+* Twitter API
+    * [Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+    * [httr](https://httr.r-lib.org)
+* მონაცემთა მოპოვება ვებსაიტებიდან
+
+## მონაცემთა ჩატვირთვა 
+
+```{r}
+library(readr)
+library(magrittr)
+path_csv <- file.path("/Users/anamamatelashvili/Documents/R_course", "R_course/data", "iris.csv")
+path_csv
+iris %>% write_csv(path_csv)
+iris %>% write_csv2(path_csv)
+iris_loaded <- read_csv(path_csv)
+
+iris %>% write_tsv(path_csv)
+iris_loaded_tsv <- read_csv(path_csv)
+
+iris %>% write_delim(path_csv, delim="X")
+iris_loaded_tsv <- read_delim(path_csv, delim="X")
+
+library(readxl)
+library(writexl)
+path_xl <- file.path("/Users/anamamatelashvili/Documents/R_course", "R_course/data", "iris.xlsx")
+path_xl
+iris %>% write_xlsx(path_xl)
+iris_loaded_excel <- read_xlsx(path_xl)
+```
+
+
+## მონაცემთა მოპოვება ვებსაიტებიდან
+
+ჩვენ გამოვიყენებთ [rvest](https://cran.r-project.org/web/packages/rvest/rvest.pdf)-ს:
+
+```{r}
+library(rvest)
+
+url_ex <- "https://www.hr.ge/announcement/222812/proeqtis-menejeri"
+page_ex <- read_html(url_ex) 
+page_ex
+
+page_body <- page_ex %>% html_node('body')
+page_body
+
+page_body %>% 
+  html_node(".ann-title") %>% 
+  html_text(trim=T)
+
+page_body %>% 
+  html_node(".location") %>% 
+  html_text(trim=T)
+
+page_body %>% 
+  html_nodes("a") %>% `[`(3) %>% html_attr("href")
+
+page_body %>% 
+  html_nodes("a") %>% html_attr("href") 
+
+page_body %>% 
+  html_nodes("li")
+
+page_body %>% 
+  html_nodes("[href]") %>% html_attr("href")
+
+page_body %>% 
+  html_nodes("p") %>% html_text()
+```
+
+
+```{r}
+library(purrr)
+library(dplyr)
+home_page_url <- "https://www.hr.ge"
+home_page <- read_html(home_page_url) 
+home_page
+
+home_page_body <- home_page %>% html_node('body')
+home_page_body
+
+library(stringr)
+all_links <- home_page_body %>% html_nodes("a") %>% html_attr("href") 
+announcement_links <- all_links[all_links %>% str_starts("/announcement/")] %>% unique()
+
+get_ad_details <- function(ad_url) {
+  prefix <- "https://www.hr.ge"
+  full_ad_url <- paste0(prefix, ad_url)
+  ad_page <- read_html(full_ad_url)
+  ad_page_body <- ad_page %>% html_node('body')
+  ad_title <- ad_page_body %>% html_node(".ann-title") %>% html_text(trim=T)
+  ad_location <- ad_page_body %>% html_node(".location") %>% html_text(trim=T)
+  ad_company <- ad_page_body %>% html_node(".company-name") %>% html_text(trim=T)
+  ad_description <- ad_page_body %>% html_node(".ann-details-description") %>% html_text(trim=T)
+  
+  df_row <- cbind(ad_title, ad_location, ad_company, ad_description)
+  names(df_row) <- c("ვაკანსია", "ლოკაცია", "დამსაქმებელი", "ვაკანსიის_დეტალები")
+  df_row <- as_tibble(df_row)
+}
+
+get_all_jobs <- function(home_page_url){
+  home_page <- read_html(home_page_url)
+  home_page_body <- home_page %>% html_node('body')
+  all_urls <- home_page_body %>% html_nodes("a") %>% html_attr("href") 
+  announcement_urls <- all_urls[all_urls %>% str_starts("/announcement/")] %>% unique()
+  
+  jobs_df <- map_dfr(announcement_urls[1:5], get_ad_details)
+  return(jobs_df)
+}
+ 
+home_page_url %>% get_all_jobs()
+```
+
+
+
+
+
+
+
+
+
