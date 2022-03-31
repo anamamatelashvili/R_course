@@ -1,5 +1,5 @@
 ---
-title: "L6 -- გითი, ტერმინალი და პროექტის აღნაგობა"
+title: "L6 -- გითი, Shell და პროექტის აღნაგობა"
 output: html_document
 date: '2022-03-31'
 ---
@@ -8,22 +8,50 @@ date: '2022-03-31'
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+* Shell
+* გითი -- git, fork 
+* GitHub
+* Feature Branch Workflow
+* პროექტის სტრუქტურა -- [cookiecutter](https://github.com/lazappi/cookiecutter-r-analysis) 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Shell 
 
-```{r cars}
-summary(cars)
+```{bash}
+pwd
+
+cd ..
+pwd
+ls 
+cd data
+pwd
+touch test.txt
+ls
+rm test.txt
+ls -a
+touch test.txt 
+mv test.txt test2.txt
+ls -a
+cd ..
+ls
+mv data/test2.txt test3.txt
+ls -a
+cd data
+ls -a
+cd ..
+rm test3.txt
+ls -a
 ```
 
-## Including Plots
+## გითი
 
-You can also embed plots, for example:
+[შეჯამება](https://education.github.com/git-cheat-sheet-education.pdf)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{bash}
+git status
+git add -A
+git status
+git commit -m "Add lecture 6"
+git pull --rebase
+git push --force
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
