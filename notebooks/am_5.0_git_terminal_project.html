@@ -486,17 +486,39 @@ git push --force</code></pre>
 <pre><code>## On branch master
 ## Your branch is up to date with &#39;origin/master&#39;.
 ## 
-## nothing to commit, working tree clean
+## Changes not staged for commit:
+##   (use &quot;git add &lt;file&gt;...&quot; to update what will be committed)
+##   (use &quot;git restore &lt;file&gt;...&quot; to discard changes in working directory)
+##  modified:   am_5.0_git_terminal_project.Rmd
+## 
+## no changes added to commit (use &quot;git add&quot; and/or &quot;git commit -a&quot;)
 ## On branch master
 ## Your branch is up to date with &#39;origin/master&#39;.
 ## 
-## nothing to commit, working tree clean
-## On branch master
-## Your branch is up to date with &#39;origin/master&#39;.
+## Changes to be committed:
+##   (use &quot;git restore --staged &lt;file&gt;...&quot; to unstage)
+##  modified:   am_5.0_git_terminal_project.Rmd
 ## 
-## nothing to commit, working tree clean
-## Already up to date.
-## Everything up-to-date</code></pre>
+## [master a08530d] Add lecture 6
+##  1 file changed, 7 insertions(+)
+## Current branch master is up to date.
+## To github.com:anamamatelashvili/R_course.git
+##    d23109f..a08530d  master -&gt; master</code></pre>
+</div>
+<div id="feature-branch-workflow" class="section level2">
+<h2>Feature Branch Workflow</h2>
+<ul>
+<li>ანალიზის ან აპლიკაციის ახალი ნაწილი უნდა გაკეთედეს ახალ ტოტზე</li>
+<li>main, master ტოტი უნდა შეიცადეს მხოლოდ დასრულებულ, გაწმენდილ და
+შემოწმებულ კოდს</li>
+<li>ახალ ტოტზე მუშაობის დასრულების შემდეგ, ამ კოდის master-თან
+შესაერთებლად უნდა გავხსნათ Pull Request რომ კოდი შემოწმდეს და მხოლოდ
+ამის შემდეგ შევაერთოთ კოდი master-თან</li>
+<li>კოდის master-თან შეერთებისას ყოველთვის გამოვიყენოთ rebase მეთოდი რომ
+master-ზე გაკეთებული ცვლილებები იყოს მოწესრიგებულად დალაგებული – ეს
+აადვილებს შემდგომში შეცდომების მოძებნას და გასწორებას და ძველ ვერსიაზე
+დაბრუნებას საჭიროების შემთხვევაში</li>
+</ul>
 </div>
 
 

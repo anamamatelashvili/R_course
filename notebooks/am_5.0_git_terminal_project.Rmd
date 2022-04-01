@@ -51,7 +51,7 @@ ls -a
 git status
 git add -A
 git status
-git commit -m "Add lecture 6"
+git commit -m "Update lecture 6 report"
 git pull --rebase
 git push --force
 ```
