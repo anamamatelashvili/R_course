@@ -1,0 +1,108 @@
+---
+title: "L7 -- ტექსტის დამუშავება, ნაწილი I"
+output: html_document
+date: '2022-04-04'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* ზოგადი მანიპულაციები
+* `stringr` პაკეტი
+* `regex`-ები
+[შეჯამება](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_strings.pdf)
+
+
+## ზოგადი მანიპულაციები 
+
+```{r}
+library(magrittr)
+text <- "მონაცემების ანალიზი და ვიზუალიზაცია"
+text <- 'მონაცემების ანალიზი "და" ვიზუალიზაცია \'R\'-ით'
+print(text)
+video_num <- 7
+sprintf("მონაცემების ანალიზის და ვიზუალიზაციის მე-%s-ე ვიდეო", video_num)
+e <- 2.718281828459045
+as.character(e)
+format(e, digits=3)
+
+paste(c("მონაცემების", "ანალიზი", "და", "ვიზუალიზაცია"), c("add text"), sep=" ")
+```
+
+
+```{r}
+library(readtext)
+path_to_text <- file.path("/Users/anamamatelashvili/Documents/R_course", "R_course/data", "declaration_of_independence.txt")
+declaration_of_independence <- readtext(path_to_text)
+class(declaration_of_independence)
+
+declaration_of_independence$text
+
+declaration_of_independence_lines <- readLines(path_to_text)
+declaration_of_independence_lines
+
+writeLines(declaration_of_independence$text)
+```
+
+## `stringr` პაკეტი
+
+* ფუნქციების სახელები იწყება `str_`-ით
+* პირველი არგუმენტია ტექსტური ვექტორი
+
+```{r}
+library(stringr)
+declaration_of_independence$text %>% str_split(pattern="\n") %>% `[[`(1)
+declaration_of_independence$text %>% str_split(pattern="\n", simplify = T)
+
+declaration_of_independence_lines %>% str_split(" ")
+
+declaration_of_independence_lines %>% str_c(collapse="\n")
+
+declaration_of_independence_lines %>% str_length()
+
+declaration_of_independence_lines %>% str_sub(10,-1)
+declaration_of_independence_lines %>% `str_sub<-`(10,-1, value="test")
+
+declaration_of_independence_lines %>% str_replace("ე", "XXX")
+
+declaration_of_independence_lines %>% str_detect("საერთაშორისო")
+declaration_of_independence_lines %>% str_subset("საერთაშორისო")
+declaration_of_independence_lines %>% str_count("საერთაშორისო")
+```
+
+
+## `regex`-ები
+
+* `.` -- ნებისმიერი სიმბოლო
+* `\\d` -- ციფრი
+* `\\w` -- ციფრი ან ანბანის ასო
+* `\n` -- ახალი ხაზი
+* `\\s` -- ცარიელი ადგილი
+
+* `*` -- 0 ან მეტი
+* `+` -- 1 ან მეტი
+* `?` -- 0 ან 1
+* `{n, m}` -- n ან მეტი და m ან ნაკლები
+
+* `^` -- დასაწყისი
+* `$` -- დაბოლოება
+* `|` -- ან
+
+* `[1-3]` -- 1, 2 ან 3
+* `[^1-3]` -- 1, 2 და 3-ის გარდა სხვა სიმბოლო
+
+
+
+```{r}
+regex_pattern <- "(\\D|^)(\\d+)\\D"
+declaration_of_independence_lines %>% str_detect(regex_pattern)
+declaration_of_independence_lines %>% str_subset(regex_pattern)
+declaration_of_independence_lines %>% str_count(regex_pattern)
+declaration_of_independence_lines %>% str_extract_all(regex_pattern)
+
+declaration_of_independence_lines %>% str_match_all(regex_pattern) 
+
+declaration_of_independence_lines %>% str_replace_all(regex_pattern, "\\2\\2")
+
+```
