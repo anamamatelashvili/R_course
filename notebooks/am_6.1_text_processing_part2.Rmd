@@ -1,0 +1,194 @@
+---
+title: "L8 -- ტექსტის დამუშავება, ნაწილი II"
+output: html_document
+date: '2022-04-04'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* სენტიმენტის ანალიზი
+* wordcloud
+* spacyr
+
+
+## სენტიმენტის ანალიზი
+```{r}
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+library(tidytext)
+
+
+books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]",
+                                                 ignore_case = TRUE)))) %>%
+  ungroup()
+
+books
+
+tidy_books <- books %>%
+  unnest_tokens(word, text)
+
+tidy_books
+
+get_sentiments("bing") %>%
+  filter(sentiment == "positive")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  semi_join(get_sentiments("bing") %>% filter(sentiment == "positive")) %>%
+  count(word, sort = TRUE)
+
+library(tidyr)
+bing <- get_sentiments("bing")
+
+tidy_books %>%
+  inner_join(bing)
+
+chapter_sentiments <- tidy_books %>%
+  inner_join(bing) %>% 
+  group_by(book, chapter, sentiment) %>% 
+  count() %>% ungroup() %>% spread(sentiment, n) %>% mutate(net_sentiment = positive - negative)
+
+library(ggplot2)
+
+ggplot(chapter_sentiments, aes(chapter, net_sentiment)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+## wordcloud
+
+```{r}
+library(wordcloud)
+tidy_books %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+books_without_stopwords <- tidy_books %>%
+  anti_join(get_stopwords())
+
+books_without_stopwords %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+```
+
+## spacyr
+
+### სესიის დაწყება 
+```{r message=FALSE}
+library('spacyr')
+library('tidytext')
+library('dplyr')
+#spacy_install(conda = "auto", version = "latest", lang_models = "en_core_web_lg",
+#              python_version = "3.6", envname = "spacy_condaenv",
+#              python_path = NULL, prompt = TRUE)
+spacy_initialize(model = "en_core_web_lg", python_executable = NULL,
+                 virtualenv = NULL, condaenv = NULL, ask = FALSE,
+                 refresh_settings = FALSE, save_profile = FALSE, check_env = TRUE, entity = TRUE)
+```
+
+### სიტყვებად დაყოფა, ტოკენიზაცია 
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai. She's many-bodied and divided in at least 2 factions."
+tokenised <- spacy_tokenize(text, what = "word", remove_punct = TRUE,
+                            remove_url = FALSE, remove_numbers = TRUE,
+                            remove_separators = TRUE, remove_symbols = FALSE, padding = TRUE, multithread = TRUE, output = "list")
+tokenised
+```
+
+### წინადადებებად დაყოფა
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai She's many-bodied and divided in at least 2 factions."
+sentences <- spacy_tokenize(text, what = "sentence", remove_punct = TRUE,
+                            remove_url = FALSE, remove_numbers = TRUE,
+                            remove_separators = TRUE, remove_symbols = FALSE, padding = TRUE,
+                            multithread = TRUE, output = "list")
+sentences
+```
+
+### ლემატიზაცია 
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai. She's many-bodied and divided in at least 2 factions."
+lemmatised <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = TRUE,
+                          entity = FALSE, dependency = FALSE, nounphrase = FALSE,
+                          multithread = TRUE)
+lemmatised %>% filter(token != lemma)
+```
+
+### ხშირი სიტყვები -- Stopwords
+```{r}
+tidytext::stop_words
+unnest_tokens(lemmatised, word, token, to_lower = TRUE) %>%
+  anti_join(stop_words) %>% `[[`('word')
+lemmatised <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = TRUE,
+                          entity = FALSE, dependency = FALSE, nounphrase = FALSE,
+                          multithread = TRUE, additional_attributes = 'is_stop')
+lemmatised %>% filter(is_stop != TRUE) %>% `[[`('token')
+```
+
+### გრამატიკული ელემენტები
+```{r}
+pos <- spacy_parse(text, pos = TRUE, tag = TRUE, lemma = FALSE,
+                   entity = FALSE, dependency = FALSE, nounphrase = FALSE,
+                   multithread = TRUE)
+pos %>% filter(pos == 'ADJ' | pos == 'VERB')
+```
+
+### მიმართებები 
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai. She's many-bodied and divided in at least 2 factions."
+dep <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = FALSE,
+                   entity = FALSE, dependency = TRUE, nounphrase = FALSE,
+                   multithread = TRUE)
+dep %>% filter(sentence_id == 2)
+```
+
+### ფრაზები
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai. She's many-bodied and divided in at least 2 factions."
+nounphrases <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = FALSE,
+                           entity = FALSE, dependency = FALSE, nounphrase = TRUE,
+                           multithread = TRUE)
+nounphrase_extract(nounphrases, concatenator = "_")
+```
+
+### ობიექტები -- Entities 
+```{r}
+text <- "The Radch Empire was created thousands of years ago. Its leader is Anaander Mianaai. She's many-bodied and divided in at least 2 factions."
+entities <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = FALSE,
+                        entity = TRUE, dependency = FALSE, nounphrase = FALSE,
+                        multithread = TRUE)
+entity_extract(entities, type = 'all', concatenator = "_")
+```
+
+### სიტყვათა ვექტორები 
+```{r}
+text <- "apple orange chair rumpelstiltskin"
+vectors <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = FALSE,
+                       entity = FALSE, dependency = FALSE, nounphrase = FALSE,
+                       multithread = TRUE, 
+                       additional_attributes = c('has_vector', 'vector_norm', 'vector'))
+vectors[1:2,] %>% select(token, has_vector, vector_norm) 
+sum(matrix(unlist(vectors$vector[1]), ncol =300) * matrix(unlist(vectors$vector[2]), ncol=300)) / (vectors$vector_norm[1][[1]] * vectors$vector_norm[2][[1]])
+sum(matrix(unlist(vectors$vector[1]), ncol =300) * matrix(unlist(vectors$vector[3]), ncol=300)) / (vectors$vector_norm[1][[1]] * vectors$vector_norm[3][[1]])
+sum(matrix(unlist(vectors$vector[1]), ncol =300) * matrix(unlist(vectors$vector[4]), ncol=300)) / (vectors$vector_norm[1][[1]] * vectors$vector_norm[4][[1]])
+```
+
+### სხვა ატრიბუტები 
+```{r}
+text <- "apple orange chair rumpelstiltskin"
+attributes <- spacy_parse(text, pos = FALSE, tag = FALSE, lemma = FALSE,
+                          entity = FALSE, dependency = FALSE, nounphrase = FALSE,
+                          multithread = TRUE, 
+                          additional_attributes = c('lower_', 'shape_', 'is_alpha', 'like_num', 'is_oov'))
+attributes[1:2,] %>% select(lower_, shape_, is_alpha, like_num, is_oov) 
+#spacy_finalize
+spacy_finalize()
+```
+
+
