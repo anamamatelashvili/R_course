@@ -1,0 +1,257 @@
+---
+title: "L9 -- მოდელირება, ნაწილი I"
+output: html_document
+date: '2022-04-05'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* მონაცემების მოდელირება 
+* წრფივი რეგრესია 
+* მრავლობითი წრფივი რეგრესია
+* სასწავლო და სატესტო მონაცემები
+
+## მონაცემების მოდელირება 
+
+[მივყვებით ამ ძალიან კარგად ახსნილ თავს.](https://r4ds.had.co.nz/model-basics.html)
+
+მონაცემებში დამოკიდებულებების აღმოჩენა
+
+```{r}
+library(tidyverse)
+
+library(modelr)
+options(na.action = na.warn)
+
+
+ggplot(sim1, aes(x, y)) + 
+  geom_point()
+```
+
+ამ მონაცემებში შეინიშნება წრფივი დამოკიდებულება. როგორ ვიპოვოთ ყველაზე კარგად მორგებული წრფე? 
+
+```{r}
+models <- tibble(
+  a1 = runif(250, -20, 40),
+  a2 = runif(250, -5, 5)
+)
+
+ggplot(sim1, aes(x, y)) + 
+  geom_abline(aes(intercept = a1, slope = a2), data = models, alpha = 1/4) +
+  geom_point() 
+```
+
+შემთხვევით შერჩეული წრფეებიდან ზოგი უფრო კარგად ერგება მონაცემებს, ზოგი კი ნაკლებად. როგორ გავზომოთ კარგად ერგება თუ არა? 
+
+```{r}
+model1 <- function(a, data) {
+  a[1] + data$x * a[2]
+}
+model1(c(7, 1.5), sim1)
+```
+
+```{r}
+measure_distance <- function(mod, data) {
+  diff <- data$y - model1(mod, data)
+  sqrt(mean(diff ^ 2))
+}
+measure_distance(c(7, 1.5), sim1)
+
+
+
+sim1_dist <- function(a1, a2) {
+  measure_distance(c(a1, a2), sim1)
+}
+
+models <- models %>% 
+  mutate(dist = purrr::map2_dbl(a1, a2, sim1_dist))
+models
+
+```
+
+გამოვყოთ ის მოდელები რომლებიც ყველაზე კარგად ერგებიან მონაცემებს:
+
+```{r}
+ggplot(sim1, aes(x, y)) + 
+  geom_point(size = 2, colour = "grey30") + 
+  geom_abline(
+    aes(intercept = a1, slope = a2, colour = -dist), 
+    data = filter(models, rank(dist) <= 10)
+  )
+
+
+ggplot(models, aes(a1, a2)) +
+  geom_point(data = filter(models, rank(dist) <= 10), size = 4, colour = "red") +
+  geom_point(aes(colour = -dist))
+```
+
+შეგვიძლია შემთხვევით შერჩევის ნაცვლად უფრო სისტემატური ძებნა ჩავატაროთ: 
+
+```{r}
+grid <- expand.grid(
+  a1 = seq(-5, 20, length = 25),
+  a2 = seq(1, 3, length = 25)
+  ) %>% 
+  mutate(dist = purrr::map2_dbl(a1, a2, sim1_dist))
+
+grid %>% 
+  ggplot(aes(a1, a2)) +
+  geom_point(data = filter(grid, rank(dist) <= 10), size = 4, colour = "red") +
+  geom_point(aes(colour = -dist)) 
+```
+
+```{r}
+ggplot(sim1, aes(x, y)) + 
+  geom_point(size = 2, colour = "grey30") + 
+  geom_abline(
+    aes(intercept = a1, slope = a2, colour = -dist), 
+    data = filter(grid, rank(dist) <= 10)
+  )
+```
+
+ასევე შეგვიძლია ალგორითმულად მოვძებნოთ საუკეთესოდ მორგებული წრფე: 
+
+```{r}
+best <- optim(c(0, 0), measure_distance, data = sim1)
+best$par
+
+
+ggplot(sim1, aes(x, y)) + 
+  geom_point(size = 2, colour = "grey30") + 
+  geom_abline(intercept = best$par[1], slope = best$par[2])
+
+
+sim1_mod <- lm(y ~ x, data = sim1)
+coef(sim1_mod)
+```
+
+
+## წრფივი რეგრესია 
+
+უწყვეტი და დისკრეტული დამოუკიდებელი ცვლადები
+
+```{r}
+ggplot(iris %>% dplyr::filter(Species == "setosa")) + 
+  geom_point(aes(y=Sepal.Length, x=Sepal.Width))
+
+setosa_model <- lm(Sepal.Length~Sepal.Width, iris %>% dplyr::filter(Species == "setosa"))
+
+setosa_model
+```
+
+
+$$\Sigma_{i=1}^{i=n} (y_i - x_i * a)^2$$
+
+$$\frac{d}{d \ a}\Sigma_{i=1}^{i=n} (y_i - x_i * a)^2 = 0$$
+
+$$\Sigma_{i=1}^{i=n} (-2x_i)(y_i - x_i * a) = 0$$
+
+$$\Sigma_{i=1}^{i=n} (x_iy_i - x_i^2 * a) = 0$$
+
+$$\Sigma_{i=1}^{i=n} x_i^2 * a = \Sigma_{i=1}^{i=n} x_iy_i$$
+
+$$a = \frac{\Sigma_{i=1}^{i=n} x_iy_i}{\Sigma_{i=1}^{i=n} x_i^2}$$
+
+```{r}
+iris %>% dplyr::filter(Species == "setosa") %>% add_predictions(setosa_model)
+iris %>% dplyr::filter(Species == "setosa") %>% add_residuals(setosa_model)
+
+setosa_with_preds <- iris %>% dplyr::filter(Species == "setosa") %>% add_predictions(setosa_model)
+
+setosa_with_preds
+
+ggplot(setosa_with_preds, aes(Sepal.Width)) +
+  geom_point(aes(y = Sepal.Length)) +
+  geom_line(aes(y = pred), colour = "red", size = 1)
+```
+
+## მრავლობითი წრფივი რეგრესია
+
+$$\hat{y} = a_0 + a_1x_1 + a_2x_2 + ... + a_n x_n$$
+შეგვიძლია შევადგინოთ ახალი ცვლადები არსებული ცვლადებისგან
+
+```{r}
+setosa <-  iris %>% dplyr::filter(Species == "setosa") %>% mutate(Sepal.Width.Squared = (Sepal.Width)^2) %>% mutate(Sepal.Width.Cubed = (Sepal.Width)^3) %>% mutate(Sepal.Width.Fourth = (Sepal.Width)^4)
+setosa %>% head()
+setosa_model_mult <- lm(Sepal.Length~Sepal.Width + Sepal.Width.Squared + Sepal.Width.Cubed + Sepal.Width.Fourth, data = setosa)
+
+setosa_model_mult
+
+setosa_with_mult_preds <- setosa %>% add_predictions(setosa_model_mult)
+
+setosa_with_mult_preds
+
+ggplot(setosa_with_mult_preds, aes(Sepal.Width)) +
+  geom_point(aes(y = Sepal.Length)) +
+  geom_smooth(aes(y = pred), colour = "red", size = 1)
+```
+
+
+```{r}
+anscombe %>% head()
+ggplot(anscombe, aes(x=x2, y=y2)) +
+  geom_point()
+
+anscombe_mult <- anscombe %>% mutate(x2_squared = x2^2)
+
+anscombe_model <- lm(y2~x2 + x2_squared, data = anscombe_mult)
+
+anscombe_model
+
+anscombe_mult <- anscombe_mult %>% add_predictions(anscombe_model)
+
+anscombe_mult
+
+ggplot(anscombe_mult, aes(x=x2)) +
+  geom_point(aes(y = y2)) +
+  geom_smooth(aes(y = pred), colour = "red", size = 1)
+```
+
+```{r}
+mtcars %>% head()
+ggplot(mtcars, aes(x=hp, y=mpg)) +
+  geom_point()
+
+ggplot(mtcars, aes(x=wt, y=mpg)) +
+  geom_point()
+
+mtcars_mult <- mtcars %>% mutate(hp_sq = hp^2, wt_sq=wt^2)
+
+cars_model <- lm(mpg~hp + wt + hp_sq + wt_sq, data = mtcars_mult)
+
+cars_model
+
+mtcars_mult <- mtcars_mult %>% add_predictions(cars_model)
+
+mtcars_mult
+```
+
+## სასწავლო და სატესტო მონაცემები
+
+```{r}
+inds <- sort(sample(nrow(setosa), nrow(setosa)*.7))
+inds
+train<-setosa[inds,]
+test<-setosa[-inds,]
+
+setosa_model_train <- lm(Sepal.Length~Sepal.Width, train)
+
+train_with_preds <- train %>% add_predictions(setosa_model_train)
+
+train_with_preds
+
+ggplot(train_with_preds, aes(Sepal.Width)) +
+  geom_point(aes(y = Sepal.Length)) +
+  geom_line(aes(y = pred), colour = "red", size = 1)
+
+test_with_preds <- test %>% add_predictions(setosa_model_train)
+
+ggplot(test_with_preds, aes(Sepal.Width)) +
+  geom_point(aes(y = Sepal.Length)) +
+  geom_line(aes(y = pred), colour = "red", size = 1)
+```
+
+
+
