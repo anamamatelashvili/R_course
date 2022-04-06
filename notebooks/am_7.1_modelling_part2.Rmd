@@ -1,0 +1,175 @@
+---
+title: "L10 -- მოდელირება, ნაწილი II"
+output: html_document
+date: '2022-04-05'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* კატეგორიული ცვლადები 
+* როცა კატეგორიული ცვლადი დამოუკიდებელია --  კოდირება
+* როცა კატეგორიული ცვლადი დამოკიდებულია -- კლასიფიცაკია, ლოგისტიკური რეგრესია 
+* t-test
+* ANOVA
+
+## კატეგორიული ცვლადები 
+
+```{r}
+library(tidyverse)
+
+library(modelr)
+options(na.action = na.warn)
+
+sim2 %>% glimpse()
+
+ggplot(sim2, aes(x, y)) + 
+  geom_point()
+```
+
+
+```{r}
+iris %>% summary()
+```
+
+დისკრეტულ ცვლადში არ შეგვეშალოს:
+
+```{r}
+mtcars %>% summary()
+```
+
+## როცა კატეგორიული ცვლადი დამოუკიდებელია -- კოდირება
+
+```{r}
+library(caret)
+
+dummy <- dummyVars(" ~ .", data=sim2, fullRank=T)
+
+dummy
+
+sim2_one_hot_encoded <- data.frame(predict(dummy, newdata = sim2))
+sim2_one_hot_encoded
+```
+```{r}
+sim2_model <- lm(y~x, sim2)
+sim2_model
+```
+
+```{r}
+set.seed(0)
+trainIndex <- createDataPartition(iris$Species, p = .7,
+                                  list = FALSE,
+                                  times = 1)
+train <- iris[ trainIndex,]
+test <- iris[-trainIndex,]
+
+dummy <- dummyVars(" ~ .", data=train, fullRank=T)
+
+train_one_hot_encoded <- data.frame(predict(dummy, newdata = train))
+
+test_one_hot_encoded <- data.frame(predict(dummy, newdata = test))
+test_one_hot_encoded
+```
+
+## როცა კატეგორიული ცვლადი დამოკიდებულია -- კლასიფიცაკია, ლოგისტიკური რეგრესია
+
+$$\hat{y} = \frac{1}{1 - e^{-(a_0 + a_1 x)}}$$
+```{r}
+log_reg <- function(x){
+  return(1 / (1 + exp(-(0 + 1 * x))))
+}
+
+ggplot(data = data.frame(x = 0), mapping = aes(x = x)) +
+  stat_function(fun = log_reg) + 
+  xlim(-5,5)
+```
+
+```{r}
+data <- data.frame(x=-5:5, y=c(rep(0, 4), 1, 0, 0, rep(1,4)))
+log_reg_model <- glm(y~x, family = binomial, 
+    data = data)
+
+log_reg_model
+
+data_probs <- data %>% mutate(probs=predict(log_reg_model,type = "response"))
+
+data_probs
+
+ggplot(data_probs, aes(x=x)) +
+  geom_point(aes(y = y)) +
+  geom_smooth(aes(y = probs), colour = "red", size = 1, se=F) 
+
+data_preds <- data_probs %>% mutate(pred = as.integer(probs >= .5))
+
+ggplot(data_preds, aes(x=x)) +
+  geom_point(aes(y = y)) +
+  geom_point(aes(y = pred), colour = "red", size = 1, se=F) 
+```
+
+### კლასიფიკაციის მოდელის შეფასება
+
+```{r}
+conf_matrix <- confusionMatrix(as.factor(data_preds$pred), as.factor(data_preds$y), positive="1") 
+conf_matrix
+names(conf_matrix)
+conf_matrix$table
+```
+
+$$acc = \frac{tp + tn}{all}$$
+
+$$precision = Pos Pred Value = \frac{tp}{tp + fp}$$
+
+$$recall = sensitivity = \frac{tp}{tp + fn}$$
+
+```{r}
+# Load the data
+set.seed(0)
+trainIndex <- createDataPartition(iris$Species, p = .7,
+                                  list = FALSE,
+                                  times = 1)
+train <- iris[ trainIndex,]
+test <- iris[-trainIndex,]
+
+library(nnet)
+
+model <- nnet::multinom(Species ~., data = train)
+
+summary(model)
+
+predicted.classes <- model %>% predict(test)
+head(predicted.classes)
+
+mean(predicted.classes == test$Species)
+
+conf_matrix <- confusionMatrix(as.factor(predicted.classes), as.factor(test$Species)) 
+conf_matrix
+names(conf_matrix)
+conf_matrix$table
+```
+
+## t-test
+
+```{r}
+sepal_length_mean <- iris$Sepal.Length %>% mean()
+sepal_length_mean
+
+t.test(iris %>% dplyr::filter(Species == "setosa") %>% `[[`("Sepal.Length"), mu=sepal_length_mean)
+
+t.test(iris %>% dplyr::filter(Species == "setosa") %>% `[[`("Sepal.Length"), iris %>% dplyr::filter(Species == "versicolor") %>% `[[`("Sepal.Length"), mu=0)
+```
+
+## ANOVA
+
+```{r}
+one_way <- aov(Sepal.Length ~ Species, data = iris)
+one_way %>% summary()
+
+diamonds %>% summary
+
+two_way <- aov(price ~ cut + clarity, data = diamonds)
+two_way %>% summary()
+
+interaction <- aov(price ~ cut * clarity, data = diamonds)
+interaction %>% summary()
+```
