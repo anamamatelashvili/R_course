@@ -1,0 +1,130 @@
+---
+title: "L11 -- მოდელირება, ნაწილი III"
+output: html_document
+date: '2022-04-05'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+* ფაქტორების ანალიზი
+    + PCA
+    + Maximum Likelihood
+* Multilevel linear regression 
+
+## ფაქტორების ანალიზი
+
+
+```{r}
+library(tidyverse)
+library(modelr)
+library(corrplot)
+iris %>% filter(Species == "setosa") %>% select(-Species) %>% cor() %>% corrplot()
+
+mtcars %>% cor() %>% corrplot(method = 'ellipse', type = 'lower', diag = FALSE)
+```
+
+პოტენციური წრფივი დამოკიდებულება ცვლადებს შორის. 
+
+```{r}
+sim1_extended <- sim1 %>% mutate(twice_x = 2 * x)
+sim1_extended
+lm(y~x+twice_x, data=sim1_extended)
+```
+
+ფაქტორების ანალიზი  
+* გვეხმარება გამოვყოთ მთავარი ფაქტორები რაც ახდებს გავლენას მონაცემების ცვალებადობაზე. შედეგად: 
+    + ვიპოვით წრფივ დამოკიდებულებებს 
+    + შევამცირებთ მონაცემების განზომილებას 
+* ფაქტორები შედგებიან არსებული ცვლადების კომბინაციებისგან
+
+### PCA -- principal component analysis
+
+```{r}
+mtcars_pca <- prcomp(mtcars[,c(1:7,10,11)], center = TRUE,scale. = TRUE)
+
+mtcars_pca %>% summary()
+
+iris_pca <- prcomp(iris[,1:4], center = TRUE,scale. = TRUE)
+
+iris_pca %>% summary()
+```
+
+```{r}
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ggbiplot)
+
+ggbiplot(mtcars_pca)
+mtcars_country <- c(rep("Japan", 3), rep("US",4), rep("Europe", 7),rep("US",3), "Europe", rep("Japan", 3), rep("US",4), rep("Europe", 3), "US", rep("Europe", 3))
+ggbiplot(mtcars_pca,ellipse=TRUE, groups=mtcars_country)
+
+ggbiplot(iris_pca)
+ggbiplot(iris_pca,ellipse=TRUE, groups=iris$Species)
+ggbiplot(iris_pca,ellipse=TRUE,choices=c(3,4))
+```
+
+### Maximum likelyhood factor analysis
+
+```{r}
+iris_factors <- factanal(iris[, 1:4], factors = 1)
+
+iris_factors
+
+1 - apply(iris_factors$loadings^2,1,sum)
+```
+
+```{r}
+mtcars_factors <-  factanal(mtcars[,c(1:7,10,11)], factors=4)
+mtcars_factors
+```
+
+$$\Sigma = \Lambda \Lambda^T + \Psi$$
+
+```{r}
+Lambda <- mtcars_factors$loadings
+Psi <- diag(mtcars_factors$uniquenesses)
+S <- mtcars_factors$correlation
+Sigma <- Lambda %*% t(Lambda) + Psi
+
+S - Sigma 
+```
+
+
+## Multilevel linear regression 
+
+```{r}
+library(lme4)
+
+iris_lin <- lm(Petal.Length ~ Petal.Width, data=iris)
+iris_lin$coefficients[2]
+
+ggplot(iris, aes(x=Petal.Width)) +
+  geom_point(aes(y = Petal.Length)) +
+  facet_grid(.~Species) +
+  geom_abline(intercept = iris_lin$coefficients[1], slope = iris_lin$coefficients[2])
+
+iris_multilevel1 <- lmer(Petal.Length ~ (1) + (Petal.Width|Species), data=iris, REML=FALSE)
+iris_multilevel1
+
+coef(iris_multilevel1)$Species[2,]
+
+ggplot(iris %>% filter(Species == "setosa"), aes(x=Petal.Width, y = Petal.Length)) +
+  geom_point() +
+  geom_abline(intercept = coef(iris_multilevel1)$Species[1,2], slope = coef(iris_multilevel1)$Species[1,1])
+
+ggplot(iris %>% filter(Species == "versicolor"), aes(x=Petal.Width, y = Petal.Length)) +
+  geom_point() +
+  geom_abline(intercept = coef(iris_multilevel1)$Species[2,2], slope = coef(iris_multilevel1)$Species[2,1])
+
+ggplot(iris %>% filter(Species == "virginica"), aes(x=Petal.Width, y = Petal.Length)) +
+  geom_point() +
+  geom_abline(intercept = coef(iris_multilevel1)$Species[3,2], slope = coef(iris_multilevel1)$Species[3,1])
+```
+
+
+
+
+
+
